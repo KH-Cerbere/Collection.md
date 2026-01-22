@@ -1,0 +1,138 @@
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import pandas as pd
+import numpy as np
+
+# 设置绘图风格，模拟学术论文的高质量输出
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+plt.rcParams['figure.dpi'] = 300
+
+def create_burst_visualization():
+    # 1. 定义模拟的突发性检测数据 (CiteSpace Burst Data)
+    # 这些数据基于UBEM领域的真实发展趋势进行构建
+    # 结构: [Keyword, Start_Year, End_Year, Burst_Start, Burst_End, Strength]
+    data = [
+        # 早期：物理建模基础与城市几何
+        ["GIS (Geographic Information System)", 2005, 2025, 2005, 2010, 6.5],
+        ["Solar Radiation", 2005, 2025, 2006, 2011, 5.2],
+        ["CityGML", 2005, 2025, 2008, 2014, 7.8],
+        ["Heat Island Effect", 2005, 2025, 2009, 2013, 4.5],
+        
+        # 中期：物理模拟深化与校准
+        ["EnergyPlus", 2005, 2025, 2011, 2016, 8.1],
+        ["Parametric Design", 2005, 2025, 2012, 2015, 3.9],
+        ["Model Calibration", 2005, 2025, 2013, 2018, 6.2],
+        ["Uncertainty Analysis", 2005, 2025, 2014, 2019, 5.5],
+        
+        # 近期：数据驱动与机器学习
+        ["Machine Learning", 2005, 2025, 2017, 2022, 9.5],
+        ["Big Data", 2005, 2025, 2016, 2020, 7.1],
+        ["Deep Learning", 2005, 2025, 2018, 2023, 6.8],
+        ["Building Retrofit", 2005, 2025, 2017, 2021, 5.9],
+        
+        # 当前：城市感知、数字孪生与碳中和
+        ["Urban Sensing", 2005, 2025, 2020, 2025, 8.5],
+        ["Digital Twin", 2005, 2025, 2021, 2025, 10.2],
+        ["Carbon Neutrality", 2005, 2025, 2022, 2025, 12.5],
+        ["Grid Interaction (GEB)", 2005, 2025, 2023, 2025, 7.5]
+    ]
+
+    # 转换为DataFrame
+    df = pd.DataFrame(data, columns=['Keyword', 'Year_Start', 'Year_End', 'Burst_Start', 'Burst_End', 'Strength'])
+    
+    # 按照 Burst_Start 排序，使图表呈现阶梯状
+    df = df.sort_values(by='Burst_Start', ascending=False).reset_index(drop=True)
+
+    # 2. 绘图设置
+    fig, ax = plt.subplots(figsize=(12, 10))
+    
+    # 设置背景色
+    ax.set_facecolor('white')
+    
+    # 获取年份范围
+    min_year = 2005
+    max_year = 2025
+    years = range(min_year, max_year + 1)
+    
+    # 表头信息
+    header_y = len(df) + 0.5
+    ax.text(min_year - 9, header_y, "Keywords", fontsize=12, fontweight='bold', ha='left')
+    ax.text(min_year - 2, header_y, "Strength", fontsize=12, fontweight='bold', ha='center')
+    ax.text(min_year + (max_year-min_year)/2, header_y, f"Timeline ({min_year}-{max_year})", fontsize=12, fontweight='bold', ha='center')
+
+    # 绘制每一行
+    for i, row in df.iterrows():
+        y = i
+        
+        # 1. 绘制关键词文本
+        ax.text(min_year - 9, y, row['Keyword'], fontsize=11, ha='left', va='center', color='#333333')
+        
+        # 2. 绘制突发强度数值
+        ax.text(min_year - 2, y, f"{row['Strength']:.2f}", fontsize=11, ha='center', va='center', color='#333333')
+        
+        # 3. 绘制时间线 (背景蓝线)
+        # 代表该关键词在数据集中出现的整个时间跨度 (这里简化为全程存在，实际可能不同，为了视觉效果模拟CiteSpace风格)
+        timeline_start = row['Year_Start']
+        timeline_end = row['Year_End']
+        
+        # 绘制蓝色线条 (非突发期)
+        # 我们用一系列小矩形来模拟CiteSpace的栅格风格
+        for year in years:
+            color = '#B0C4DE' # Light Steel Blue (CiteSpace 默认非突发颜色)
+            
+            # 如果年份在突发范围内，则改为红色
+            if row['Burst_Start'] <= year <= row['Burst_End']:
+                color = '#CD5C5C' # Indian Red (CiteSpace 默认突发颜色)
+            
+            # 绘制年度矩形
+            rect = patches.Rectangle(
+                (year - 0.4, y - 0.25), # (x,y)
+                0.8, # width
+                0.5, # height
+                linewidth=0,
+                edgecolor='none',
+                facecolor=color
+            )
+            ax.add_patch(rect)
+            
+            # 绘制连接线 (仅为了视觉连贯，CiteSpace主要是格子)
+            if year < max_year:
+                line_color = '#B0C4DE'
+                if row['Burst_Start'] <= year < row['Burst_End']: # 如果这一年和下一年都在突发期
+                     line_color = '#CD5C5C'
+                
+                ax.plot([year, year+1], [y, y], color=line_color, linewidth=1, zorder=-1)
+
+    # 3. 坐标轴调整
+    ax.set_xlim(min_year - 10, max_year + 1)
+    ax.set_ylim(-1, len(df) + 1)
+    
+    # 隐藏Y轴刻度
+    ax.set_yticks([])
+    
+    # 设置X轴刻度 (年份)
+    x_ticks = list(range(min_year, max_year + 1, 2)) # 每两年一个刻度
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(x_ticks, fontsize=10)
+    
+    # 移除边框
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+        
+    # 添加X轴底部的线
+    ax.spines['bottom'].set_visible(True)
+    ax.spines['bottom'].set_color('#333333')
+
+    # 添加标题
+    plt.title("Top Keywords with Strongest Citation Bursts (Simulated for UBEM)", 
+              fontsize=16, fontweight='bold', pad=30, loc='left')
+    
+    plt.tight_layout()
+    
+    # 保存图片
+    plt.savefig('ubem_burst_detection.png', dpi=300, bbox_inches='tight')
+    print("Visualization generated successfully.")
+
+if __name__ == "__main__":
+    create_burst_visualization()
