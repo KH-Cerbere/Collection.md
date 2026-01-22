@@ -1,0 +1,154 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import community.community_louvain as community_louvain  # 用于模拟Louvain聚类逻辑
+
+# 设置绘图风格，模拟 R ggplot2 的清新风格
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['figure.dpi'] = 300
+
+class BibliometrixSim:
+    def __init__(self):
+        self.G = nx.Graph()
+        # Bibliometrix 常用配色 (Set2/Set3 风格)
+        self.colors = ['#66C2A5', '#FC8D62', '#8DA0CB', '#E78AC3'] 
+        # Green (Classic), Orange (Data), Blue (Carbon), Pink (Twin)
+
+    def generate_structure(self):
+        # 1. 定义四大聚类 (Clusters)
+        # Cluster 1: The Foundation (Physical Modeling) - Green
+        c1_nodes = {
+            "UBEM": 100, "EnergyPlus": 80, "GIS": 70, "CityGML": 65,
+            "LOD": 40, "Thermal Comfort": 35, "Urban Morphology": 45,
+            "Weather File": 30, "Shadow Analysis": 25
+        }
+        
+        # Cluster 2: The Enabler (Data Science & AI) - Orange
+        c2_nodes = {
+            "Machine Learning": 95, "Calibration": 75, "Deep Learning": 60,
+            "Big Data": 55, "Surrogate Model": 50, "Uncertainty": 45,
+            "ANN": 40, "Sensitivity Analysis": 38, "Clustering": 30
+        }
+        
+        # Cluster 3: The Goal (Carbon Neutrality & Policy) - Blue
+        c3_nodes = {
+            "Carbon Neutrality": 110, "Decarbonization": 70, "Retrofit": 85,
+            "PV Potential": 65, "GHG Emissions": 60, "District Heating": 55,
+            "Policy Making": 40, "Life Cycle Assessment": 45, "Electrification": 35
+        }
+        
+        # Cluster 4: The Frontier (Digital Twin & IoT) - Pink
+        c4_nodes = {
+            "Digital Twin": 90, "Urban Sensing": 75, "IoT": 60,
+            "Real-time": 50, "Smart City": 65, "Resilience": 45,
+            "Grid Interaction": 55, "Occupancy Modeling": 40
+        }
+
+        # 添加节点
+        all_clusters = [c1_nodes, c2_nodes, c3_nodes, c4_nodes]
+        for idx, cluster in enumerate(all_clusters):
+            for node, size in cluster.items():
+                self.G.add_node(node, size=size, group=idx)
+
+        # 2. 构建连接 (Edges)
+        # 规则：聚类内部连接紧密，聚类之间连接关键节点
+        
+        # (A) 聚类内部全连接 (模拟高共现)
+        for cluster in all_clusters:
+            nodes = list(cluster.keys())
+            # 模拟中心辐射结构 (Hub-Spoke)
+            hub = nodes[0] # 第一个是Hub
+            for other in nodes[1:]:
+                self.G.add_edge(hub, other, weight=3)
+            # 随机添加内部连线
+            for i in range(len(nodes)):
+                for j in range(i+1, len(nodes)):
+                    if np.random.random() > 0.7:
+                        self.G.add_edge(nodes[i], nodes[j], weight=1)
+
+        # (B) 聚类间连接 (Bridges / Structural Holes)
+        # C1 (Physics) <-> C2 (Data): Calibration is the bridge
+        self.G.add_edge("EnergyPlus", "Calibration", weight=5)
+        self.G.add_edge("CityGML", "Big Data", weight=2)
+        self.G.add_edge("UBEM", "Surrogate Model", weight=4)
+
+        # C1 (Physics) <-> C3 (Carbon): UBEM is the tool for Retrofit
+        self.G.add_edge("UBEM", "Retrofit", weight=6)
+        self.G.add_edge("GIS", "PV Potential", weight=5)
+        self.G.add_edge("EnergyPlus", "GHG Emissions", weight=3)
+
+        # C2 (Data) <-> C4 (Twin): ML drives Digital Twin
+        self.G.add_edge("Machine Learning", "Digital Twin", weight=6)
+        self.G.add_edge("Big Data", "IoT", weight=4)
+        self.G.add_edge("Calibration", "Real-time", weight=3)
+
+        # C3 (Carbon) <-> C4 (Twin): Twin serves Carbon
+        self.G.add_edge("Digital Twin", "Carbon Neutrality", weight=8)
+        self.G.add_edge("Smart City", "Decarbonization", weight=4)
+        self.G.add_edge("Grid Interaction", "District Heating", weight=5)
+
+    def draw(self):
+        plt.figure(figsize=(14, 12))
+        ax = plt.gca()
+        
+        # 布局算法：使用 Fruchterman-Reingold 算法模拟力导向
+        # k 参数控制节点间距，越大越松散
+        pos = nx.spring_layout(self.G, k=0.35, iterations=100, seed=42)
+        
+        # 提取属性
+        groups = nx.get_node_attributes(self.G, 'group')
+        sizes = nx.get_node_attributes(self.G, 'size')
+        
+        # 绘制边 (淡灰色，细线)
+        nx.draw_networkx_edges(self.G, pos, alpha=0.2, edge_color='#999999', width=1)
+        
+        # 绘制节点
+        for idx in range(4):
+            nodelist = [n for n, g in groups.items() if g == idx]
+            node_sizes = [sizes[n] * 12 for n in nodelist] # 调整大小比例
+            
+            # 节点主体
+            nx.draw_networkx_nodes(self.G, pos, nodelist=nodelist, 
+                                   node_color=self.colors[idx], 
+                                   node_size=node_sizes, 
+                                   alpha=0.85, 
+                                   edgecolors='white', # R风格常有白边
+                                   linewidths=1.5)
+        
+        # 绘制标签 (只显示重要节点，避免杂乱，或者全显示但调整字体)
+        # Bibliometrix 通常全显示
+        labels = {n: n for n in self.G.nodes()}
+        
+        # 动态字体大小
+        for node, (x, y) in pos.items():
+            size = sizes[node]
+            font_size = 6 + (size / 15) # 基础大小 + 权重
+            plt.text(x, y, node, fontsize=font_size, ha='center', va='center', 
+                     color='#333333', fontweight='bold',
+                     bbox=dict(facecolor='white', alpha=0.0, edgecolor='none')) # 无背景，直接文字
+
+        # 装饰
+        plt.title("Keyword Co-occurrence Network (Simulating R/Bibliometrix)", 
+                  fontsize=18, pad=20, fontweight='bold', loc='left')
+        
+        # 模拟图例 (Clusters)
+        import matplotlib.patches as mpatches
+        legend_patches = [
+            mpatches.Patch(color=self.colors[0], label='Cluster 1: Physical Foundation (GIS/Model)'),
+            mpatches.Patch(color=self.colors[1], label='Cluster 2: Data Intelligence (AI/ML)'),
+            mpatches.Patch(color=self.colors[2], label='Cluster 3: Carbon Strategies (Retrofit/Policy)'),
+            mpatches.Patch(color=self.colors[3], label='Cluster 4: Future Paradigm (Digital Twin)')
+        ]
+        plt.legend(handles=legend_patches, loc='lower right', fontsize=10, frameon=True)
+        
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig('bibliometrix_network.png', dpi=300)
+        print("Bibliometrix style network generated.")
+
+if __name__ == "__main__":
+    sim = BibliometrixSim()
+    sim.generate_structure()
+    sim.draw()
