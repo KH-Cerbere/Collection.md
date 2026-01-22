@@ -1,0 +1,244 @@
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.path import Path
+import numpy as np
+
+# 设置绘图风格
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'SimHei'] 
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['figure.dpi'] = 300
+
+class RefinedTimeZoneView:
+    def __init__(self):
+        self.nodes = []
+        self.edges = []
+        self.year_min = 2005
+        self.year_max = 2026
+        
+        # 定义三条核心泳道的Y轴区间 (0-100)
+        # Layer 1: Data & Geo (Bottom) -> 10-35
+        # Layer 2: Modeling & Algo (Middle) -> 40-70
+        # Layer 3: Application & Policy (Top) -> 75-95
+        self.layers = {
+            'Data': (10, 35),
+            'Model': (40, 70),
+            'App': (75, 95)
+        }
+
+    def add_node(self, label, year, freq, layer_type):
+        """
+        layer_type: 'Data', 'Model', 'App'
+        """
+        self.nodes.append({
+            'label': label,
+            'year': year,
+            'freq': freq,
+            'layer': layer_type,
+            'id': label # 使用标签作为ID
+        })
+
+    def add_edge(self, source, target, weight=1):
+        self.edges.append({'source': source, 'target': target, 'weight': weight})
+
+    def get_node_pos(self):
+        """计算节点坐标，包含简单的防重叠逻辑"""
+        pos = {}
+        # 按年份和层级分组
+        groups = {}
+        for node in self.nodes:
+            key = (node['year'], node['layer'])
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(node)
+        
+        for key, nodes in groups.items():
+            year, layer = key
+            y_min, y_max = self.layers[layer]
+            
+            # 在层级范围内均匀分布
+            count = len(nodes)
+            # 按频率排序，重要的在中间
+            nodes.sort(key=lambda x: x['freq'], reverse=True)
+            
+            if count == 1:
+                steps = [(y_min + y_max) / 2]
+            else:
+                step_size = (y_max - y_min) / (count + 1)
+                steps = [y_min + step_size * (i + 1) for i in range(count)]
+            
+            for i, node in enumerate(nodes):
+                # 加入微小的随机抖动，避免完全直线
+                jitter = np.random.uniform(-0.5, 0.5) 
+                pos[node['id']] = (year, steps[i] + jitter)
+                
+        return pos
+
+    def draw_curve(self, ax, p1, p2, color='#999999', alpha=0.3):
+        """绘制贝塞尔曲线，模拟CiteSpace效果"""
+        x1, y1 = p1
+        x2, y2 = p2
+        
+        # 控制点逻辑：根据跨度调整曲率
+        dist = x2 - x1
+        ctrl_x = x1 + dist * 0.5
+        
+        # 即使是直线逻辑，稍微弯曲一点也更好看
+        # 如果是同一层，向上弯曲；跨层，S型
+        verts = [
+            (x1, y1), # Start
+            (ctrl_x, y1), # Control 1 (水平出发)
+            (ctrl_x, y2), # Control 2 (水平到达)
+            (x2, y2)  # End
+        ]
+        codes = [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4]
+        path = Path(verts, codes)
+        patch = patches.PathPatch(path, facecolor='none', edgecolor=color, alpha=alpha, lw=1.2)
+        ax.add_patch(patch)
+
+    def generate_data(self):
+        # --- Layer 1: Data Acquisition & Geography (Bottom) ---
+        self.add_node("GIS Data", 2005, 40, 'Data')
+        self.add_node("LiDAR", 2008, 30, 'Data')
+        self.add_node("CityGML", 2009, 55, 'Data')
+        self.add_node("Smart Meters", 2012, 45, 'Data')
+        self.add_node("IoT Sensors", 2016, 60, 'Data')
+        self.add_node("Street View Img", 2019, 50, 'Data')
+        self.add_node("Crowdsourcing", 2021, 35, 'Data')
+        self.add_node("Real-time Sensing", 2024, 65, 'Data')
+
+        # --- Layer 2: Modeling & Algorithms (Middle) ---
+        self.add_node("Physical Model", 2006, 50, 'Model')
+        self.add_node("EnergyPlus", 2010, 75, 'Model')
+        self.add_node("Model Calibration", 2014, 65, 'Model')
+        self.add_node("Reduced Order", 2015, 40, 'Model')
+        self.add_node("Machine Learning", 2017, 85, 'Model')
+        self.add_node("Surrogate Model", 2019, 55, 'Model')
+        self.add_node("GNN (Graph)", 2022, 45, 'Model')
+        self.add_node("Digital Twin", 2023, 90, 'Model')
+        self.add_node("Generative AI", 2025, 60, 'Model')
+
+        # --- Layer 3: Application & Carbon Goals (Top) ---
+        self.add_node("Solar Potential", 2007, 45, 'App')
+        self.add_node("Heat Island", 2011, 50, 'App')
+        self.add_node("Retrofit", 2015, 60, 'App')
+        self.add_node("District Energy", 2017, 55, 'App')
+        self.add_node("Resilience", 2020, 50, 'App')
+        self.add_node("Carbon Neutrality", 2021, 95, 'App')
+        self.add_node("Grid Interaction", 2023, 70, 'App')
+        self.add_node("Policy Making", 2025, 55, 'App')
+
+        # --- Edges (Evolution Paths) ---
+        # Data Path
+        self.add_edge("GIS Data", "CityGML")
+        self.add_edge("LiDAR", "CityGML")
+        self.add_edge("CityGML", "Smart Meters") # Geo + Energy Data
+        self.add_edge("Smart Meters", "IoT Sensors")
+        self.add_edge("Street View Img", "Real-time Sensing")
+        self.add_edge("IoT Sensors", "Real-time Sensing")
+
+        # Model Path
+        self.add_edge("Physical Model", "EnergyPlus")
+        self.add_edge("EnergyPlus", "Model Calibration")
+        self.add_edge("Model Calibration", "Reduced Order")
+        self.add_edge("Model Calibration", "Machine Learning") # Pivot point
+        self.add_edge("Machine Learning", "Surrogate Model")
+        self.add_edge("Surrogate Model", "Digital Twin")
+        self.add_edge("GNN (Graph)", "Digital Twin")
+        self.add_edge("Generative AI", "Digital Twin")
+
+        # Cross-Layer Interactions (Crucial!)
+        self.add_edge("CityGML", "EnergyPlus") # Data -> Model
+        self.add_edge("Smart Meters", "Model Calibration") # Data -> Model
+        self.add_edge("Street View Img", "Machine Learning") # Data -> Model
+        self.add_edge("Real-time Sensing", "Digital Twin") # Data -> Model
+
+        self.add_edge("EnergyPlus", "Solar Potential") # Model -> App
+        self.add_edge("Reduced Order", "District Energy") # Model -> App
+        self.add_edge("Machine Learning", "Retrofit") # Model -> App
+        self.add_edge("Digital Twin", "Grid Interaction") # Model -> App
+        self.add_edge("Digital Twin", "Carbon Neutrality") # Model -> App
+        self.add_edge("Carbon Neutrality", "Policy Making")
+
+    def draw(self):
+        fig, ax = plt.subplots(figsize=(18, 11))
+        ax.set_facecolor('white')
+        
+        pos = self.get_node_pos()
+        
+        # 1. 绘制背景时区线
+        for year in range(self.year_min, self.year_max):
+            ax.axvline(x=year, color='#EEEEEE', linestyle='-', linewidth=1.5, zorder=0)
+            ax.text(year, 5, str(year), ha='center', fontsize=10, color='#888888', fontweight='bold')
+
+        # 2. 绘制连线 (曲线)
+        # 先绘制，放在底层
+        for edge in self.edges:
+            if edge['source'] in pos and edge['target'] in pos:
+                p1 = pos[edge['source']]
+                p2 = pos[edge['target']]
+                
+                # 根据层级关系给边上色
+                # Data -> Model: Cyan
+                # Model -> App: Orange
+                # Intra-layer: Gray
+                s_layer = [n for n in self.nodes if n['id']==edge['source']][0]['layer']
+                t_layer = [n for n in self.nodes if n['id']==edge['target']][0]['layer']
+                
+                edge_color = '#BBBBBB'
+                if s_layer == 'Data' and t_layer == 'Model':
+                    edge_color = '#4ECDC4' # Teal
+                elif s_layer == 'Model' and t_layer == 'App':
+                    edge_color = '#FF6B6B' # Red/Orange
+                elif s_layer == 'App' and t_layer == 'App':
+                    edge_color = '#FFB347' # Orange
+                
+                self.draw_curve(ax, p1, p2, color=edge_color, alpha=0.5)
+
+        # 3. 绘制节点
+        layer_colors = {
+            'Data': '#45B7D1', # Blue/Cyan
+            'Model': '#4E8098', # Steel Blue (CiteSpace default-ish)
+            'App': '#FF6B6B'  # Red
+        }
+
+        for node in self.nodes:
+            x, y = pos[node['id']]
+            size = node['freq'] * 12
+            color = layer_colors[node['layer']]
+            
+            # 光晕
+            halo = patches.Circle((x, y), radius=0.25 + size/800, color=color, alpha=0.2, zorder=2)
+            ax.add_patch(halo)
+            
+            # 核心
+            core = patches.Circle((x, y), radius=0.1 + size/2000, color=color, alpha=0.9, ec='white', lw=1, zorder=3)
+            ax.add_patch(core)
+            
+            # 标签 (带背景框，防止遮挡连线)
+            ax.text(x + 0.2, y, node['label'], fontsize=9, ha='left', va='center', 
+                    color='#333333', fontweight='bold', zorder=4,
+                    bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+
+        # 4. 装饰
+        # 添加泳道标签
+        ax.text(2004.5, 25, "Layer 1: Data Acquisition\n(Sensing)", fontsize=12, color=layer_colors['Data'], ha='right', va='center', fontweight='bold')
+        ax.text(2004.5, 55, "Layer 2: Modeling & Core\n(Processing)", fontsize=12, color=layer_colors['Model'], ha='right', va='center', fontweight='bold')
+        ax.text(2004.5, 85, "Layer 3: Application & Goal\n(Decision)", fontsize=12, color=layer_colors['App'], ha='right', va='center', fontweight='bold')
+
+        ax.set_xlim(2003, 2026)
+        ax.set_ylim(0, 100)
+        ax.axis('off')
+        
+        # 底部线
+        ax.plot([2005, 2025], [2, 2], color='#333333', lw=2)
+        
+        plt.title("Refined Time-Zone View: The Cross-Layer Evolution of UBEM towards Carbon Neutrality", fontsize=16, fontweight='bold', pad=20)
+        plt.tight_layout()
+        plt.savefig('refined_timezone_view.png', dpi=300, bbox_inches='tight')
+        print("Refined visualization generated.")
+
+if __name__ == "__main__":
+    viz = RefinedTimeZoneView()
+    viz.generate_data()
+    viz.draw()
