@@ -1,0 +1,179 @@
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import networkx as nx
+import numpy as np
+
+# 设置绘图风格
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'SimHei'] # 适配中文
+plt.rcParams['axes.unicode_minus'] = False
+
+class TimeZoneView:
+    def __init__(self):
+        self.nodes = []
+        self.edges = []
+        self.year_range = range(2005, 2026)
+        
+    def add_node(self, label, year, freq, category):
+        self.nodes.append({
+            'label': label,
+            'year': year,
+            'freq': freq,
+            'category': category # 0: 几何/基础, 1: 物理/模拟, 2: 数据/感知, 3: 碳中和/应用
+        })
+        
+    def add_edge(self, source, target):
+        self.edges.append((source, target))
+
+    def generate_data(self):
+        # 构建UBEM领域的演进数据
+        
+        # 2005-2010: 基础构建期 (Geometry & Physics)
+        self.add_node("GIS", 2005, 50, 0)
+        self.add_node("Urban Heat Island", 2006, 45, 1)
+        self.add_node("Solar Potential", 2007, 40, 1)
+        self.add_node("CityGML", 2008, 60, 0) # 关键节点
+        self.add_node("LOD (Level of Detail)", 2009, 35, 0)
+        self.add_node("3D City Models", 2010, 48, 0)
+
+        # 2011-2016: 物理模型深化期 (Simulation & Calibration)
+        self.add_node("EnergyPlus", 2011, 70, 1)
+        self.add_node("Archetypes", 2012, 55, 1)
+        self.add_node("Sensitivity Analysis", 2013, 42, 1)
+        self.add_node("Model Calibration", 2014, 65, 1) # 关键节点
+        self.add_node("UrbanOpt", 2015, 30, 1)
+        self.add_node("Bayesian Inference", 2016, 38, 2) # 数据方法开始介入
+
+        # 2017-2021: 数据驱动爆发期 (Data-Driven & ML)
+        self.add_node("Machine Learning", 2017, 85, 2) # 爆发点
+        self.add_node("Big Data", 2017, 60, 2)
+        self.add_node("Surrogate Models", 2018, 50, 2)
+        self.add_node("Deep Learning", 2019, 55, 2)
+        self.add_node("Street View Imagery", 2020, 45, 2) # 城市感知
+        self.add_node("Retrofit Analysis", 2021, 62, 3)
+
+        # 2022-2025: 碳中和与数字孪生期 (Carbon & Twin)
+        self.add_node("Carbon Neutrality", 2022, 95, 3) # 绝对热点
+        self.add_node("Urban Digital Twin", 2023, 80, 3)
+        self.add_node("Resilience", 2023, 50, 3)
+        self.add_node("Grid Interaction", 2024, 55, 3)
+        self.add_node("Decarbonization Pathways", 2025, 70, 3)
+
+        # 构建演进路径连线 (模拟知识流动)
+        # 路径1: 几何 -> 数字孪生
+        self.add_edge("GIS", "CityGML")
+        self.add_edge("CityGML", "3D City Models")
+        self.add_edge("3D City Models", "Street View Imagery") # 数据源扩充
+        self.add_edge("Street View Imagery", "Urban Digital Twin")
+        
+        # 路径2: 物理模型 -> 混合模型 -> 碳中和
+        self.add_edge("Urban Heat Island", "EnergyPlus")
+        self.add_edge("EnergyPlus", "Model Calibration")
+        self.add_edge("Model Calibration", "Bayesian Inference")
+        self.add_edge("Bayesian Inference", "Surrogate Models")
+        self.add_edge("Surrogate Models", "Carbon Neutrality") # 效率提升支持大规模计算
+
+        # 路径3: 机器学习 -> 智能应用
+        self.add_edge("Solar Potential", "Archetypes")
+        self.add_edge("Archetypes", "Retrofit Analysis")
+        self.add_edge("Machine Learning", "Deep Learning")
+        self.add_edge("Deep Learning", "Urban Digital Twin")
+        self.add_edge("Carbon Neutrality", "Decarbonization Pathways")
+        self.add_edge("Retrofit Analysis", "Decarbonization Pathways")
+
+    def draw(self):
+        fig, ax = plt.subplots(figsize=(16, 10))
+        ax.set_facecolor('white') # CiteSpace TimeZone常用白色背景
+
+        # 1. 布局计算
+        # X轴为年份，Y轴在年份内分散排列
+        pos = {}
+        year_counts = {y: 0 for y in self.year_range}
+        
+        # 简单的Y轴分配策略：每个年份内的节点按频率从低到高排列，避免重叠
+        # 先按年份分组
+        nodes_by_year = {}
+        for node in self.nodes:
+            if node['year'] not in nodes_by_year:
+                nodes_by_year[node['year']] = []
+            nodes_by_year[node['year']].append(node)
+            
+        for year in self.year_range:
+            if year in nodes_by_year:
+                # 按频率排序，频率高的放上面
+                current_nodes = sorted(nodes_by_year[year], key=lambda x: x['freq'])
+                total_in_year = len(current_nodes)
+                for i, node in enumerate(current_nodes):
+                    # Y轴坐标：基于类别的基础偏移 + 年份内的排序偏移
+                    # 这样可以让不同主题呈现出“层流”的感觉
+                    # category_offset = node['category'] * 20 
+                    # 也可以直接分散：
+                    y_pos = (i + 1) * (100 / (total_in_year + 1)) + node['category'] * 5
+                    pos[node['label']] = (year, y_pos)
+
+        # 2. 绘制时区背景线
+        for year in self.year_range:
+            ax.axvline(x=year, color='#E0E0E0', linestyle='--', linewidth=0.8, zorder=0)
+            ax.text(year, -5, str(year), ha='center', fontsize=9, color='#666666', rotation=45)
+
+        # 3. 绘制连线 (贝塞尔曲线或直线)
+        for source, target in self.edges:
+            if source in pos and target in pos:
+                x1, y1 = pos[source]
+                x2, y2 = pos[target]
+                
+                # 颜色渐变或灰色
+                ax.plot([x1, x2], [y1, y2], color='#999999', alpha=0.4, linewidth=1, zorder=1)
+                
+                # 箭头
+                # ax.arrow(...) # 简单起见，用plot连线，CiteSpace通常是曲线
+
+        # 4. 绘制节点
+        colors = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2'] # 对应四个类别
+        
+        for node in self.nodes:
+            x, y = pos[node['label']]
+            size = node['freq'] * 8 # 节点大小
+            color = colors[node['category']]
+            
+            # 绘制圆点
+            circle = patches.Circle((x, y), radius=0.2 + size/1000, facecolor=color, alpha=0.8, edgecolor='white', linewidth=1, zorder=2)
+            ax.add_patch(circle)
+            
+            # 绘制外圈 (模拟年轮/累积效应)
+            circle_outline = patches.Circle((x, y), radius=0.25 + size/1000, fill=False, edgecolor=color, alpha=0.3, linewidth=2, zorder=1)
+            ax.add_patch(circle_outline)
+            
+            # 绘制标签 (45度倾斜，模拟CiteSpace风格)
+            ax.text(x + 0.15, y + 0.15, node['label'], fontsize=9, rotation=25, 
+                    ha='left', va='bottom', zorder=3, fontweight='bold', color='#333333',
+                    bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=0.5))
+
+        # 设置图表范围和标签
+        ax.set_xlim(2004, 2026)
+        ax.set_ylim(0, 100)
+        ax.axis('off') # 隐藏坐标轴边框
+        
+        # 添加底部X轴线
+        ax.plot([2005, 2025], [0, 0], color='#333333', linewidth=1)
+        
+        # 标题和图例
+        plt.title("CiteSpace Time-Zone View: Evolution of Research Hotspots in UBEM (2005-2025)", fontsize=16, fontweight='bold', pad=20)
+        
+        # 手动添加图例
+        legend_elements = [
+            patches.Patch(facecolor=colors[0], label='Geometry & GIS Phase'),
+            patches.Patch(facecolor=colors[1], label='Physical Modeling Phase'),
+            patches.Patch(facecolor=colors[2], label='Data-Driven Phase'),
+            patches.Patch(facecolor=colors[3], label='Carbon Neutrality Phase')
+        ]
+        ax.legend(handles=legend_elements, loc='upper left', frameon=False, ncol=4)
+
+        plt.tight_layout()
+        plt.savefig('citespace_timezone_view.png', dpi=300, bbox_inches='tight')
+        print("Time-Zone view generated successfully.")
+
+if __name__ == "__main__":
+    tz = TimeZoneView()
+    tz.generate_data()
+    tz.draw()
